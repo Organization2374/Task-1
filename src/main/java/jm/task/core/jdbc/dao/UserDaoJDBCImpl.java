@@ -6,10 +6,11 @@ import jm.task.core.jdbc.util.Util;
 import java.sql.*;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.logging.Logger;
 
 public class UserDaoJDBCImpl implements UserDao {
 
-    Connection connection = Util.getConnection();
+    private static final Logger logger = Logger.getLogger(UserDaoJDBCImpl.class.getSimpleName());
 
     public UserDaoJDBCImpl() {
 
@@ -31,30 +32,37 @@ public class UserDaoJDBCImpl implements UserDao {
 
     public void saveUser(String name, String lastName, byte age) {
         String query = "INSERT INTO users (name, lastname, age) VALUES (?, ?, ?)";
-        try (PreparedStatement preparedStatement = connection.prepareStatement(query)) {
+        try (Connection connection = Util.getConnection();
+             PreparedStatement preparedStatement = connection.prepareStatement(query)) {
             preparedStatement.setString(1, name);
             preparedStatement.setString(2, lastName);
             preparedStatement.setByte(3, age);
             preparedStatement.executeUpdate();
+            connection.commit();
+            logger.info("User с именем " + name + " добавлен в базу данных");
         } catch (SQLException e) {
-            throw new RuntimeException(e);
+            e.printStackTrace();
         }
     }
 
     public void removeUserById(long id) {
         String query = "DELETE FROM users WHERE id = ?";
-        try (PreparedStatement preparedStatement = connection.prepareStatement(query)) {
+        try (Connection connection = Util.getConnection();
+             PreparedStatement preparedStatement = connection.prepareStatement(query)) {
             preparedStatement.setLong(1, id);
             preparedStatement.executeUpdate();
+            connection.commit();
+            logger.info("Удален user с id: " + id);
         } catch (SQLException e) {
-            throw new RuntimeException(e);
+            e.printStackTrace();
         }
     }
 
     public List<User> getAllUsers() {
         List<User> users = new ArrayList<>();
         String query = "SELECT * FROM users";
-        try (Statement statement = connection.createStatement();
+        try (Connection connection = Util.getConnection();
+             Statement statement = connection.createStatement();
              ResultSet resultSet = statement.executeQuery(query)) {
             while (resultSet.next()) {
                 Long id = resultSet.getLong("id");
@@ -64,9 +72,11 @@ public class UserDaoJDBCImpl implements UserDao {
                 User user = new User(name, lastName, age);
                 user.setId(id);
                 users.add(user);
+                connection.commit();
+                logger.info("Все пользователи извлечены из БД");
             }
         } catch (SQLException e) {
-            throw new RuntimeException(e);
+            e.printStackTrace();
         }
         return users;
     }
@@ -77,8 +87,11 @@ public class UserDaoJDBCImpl implements UserDao {
     }
 
     public void executeUpdate(String query) {
-        try (Statement statement = connection.createStatement()) {
+        try (Connection connection = Util.getConnection();
+             Statement statement = connection.createStatement()) {
             statement.executeUpdate(query);
+            connection.commit();
+            logger.info("Выполнен запрос " + query);
         } catch (SQLException e) {
             e.printStackTrace();
         }
